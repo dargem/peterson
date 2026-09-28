@@ -25,15 +25,9 @@ jobs:
       - name: Run O0
         run: |
           echo "===== O0 ====="
-          for i in {1..5}; do
-            echo -n "Run $i: "
-            ./test_O0
-          done
+          ./test_O0
 
       - name: Run O3
         run: |
           echo "===== O3 ====="
-          for i in {1..5}; do
-            echo -n "Run $i: "
-            ./test_O3
-          done
+          ./test_O3

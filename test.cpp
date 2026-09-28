@@ -11,7 +11,7 @@ std::atomic<int> turn{0};
 std::atomic<int> inside{0};
 std::atomic<std::uint64_t> violations{0};
 
-constexpr std::uint64_t iterations = 10'000'000;
+constexpr std::uint64_t iterations = 100'000'000;
 
 std::barrier start{2};
 
@@ -46,8 +46,6 @@ void worker(int me, int other)
         {
             violations.fetch_add(1, std::memory_order_relaxed);
         }
-
-        std::this_thread::yield();
 
         inside.fetch_sub(1, std::memory_order_relaxed);
 
