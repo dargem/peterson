@@ -15,21 +15,23 @@ constexpr std::uint64_t iterations = 10'000'000;
 
 std::barrier start{2};
 
-auto used_mode = std::memory_order_relaxed;
+template <auto USED_MODE>
 void enter(int me, int other)
 {
-    in_critical[me].store(true, used_mode);  // S1
-    turn.store(other, used_mode);            // S2
+    in_critical[me].store(true, USED_MODE);  // S1
+    turn.store(other, USED_MODE);            // S2
 
-    while (in_critical[other].load(used_mode) &&
-           turn.load(used_mode) == other);
+    while (in_critical[other].load(USED_MODE) &&
+           turn.load(USED_MODE) == other);
 }
 
+template <auto USED_MODE>
 void leave(int me)
 {
-    in_critical[me].store(false, used_mode);
+    in_critical[me].store(false, USED_MODE);
 }
 
+template <auto USED_MODE>
 void worker(int me, int other)
 {
 
@@ -37,7 +39,7 @@ void worker(int me, int other)
 
     for (size_t i = 0; i < iterations; ++i)
     {
-        enter(me, other);
+        enter<USED_MODE>(me, other);
 
         // Critical section
         if (inside.fetch_add(1, std::memory_order_relaxed) != 0)
@@ -47,16 +49,15 @@ void worker(int me, int other)
 
         inside.fetch_sub(1, std::memory_order_relaxed);
 
-        leave(me);
+        leave<USED_MODE>(me);
     }
 }
 
 int main()
 {
     std::cout << "--- RELAXED ORDERING ---\n";
-    used_mode = std::memory_order_relaxed;
-    std::thread t0(worker, 0, 1);
-    std::thread t1(worker, 1, 0);
+    std::thread t0(worker<std::memory_order_relaxed>, 0, 1);
+    std::thread t1(worker<std::memory_order_relaxed>, 1, 0);
 
     t0.join();
     t1.join();
@@ -64,11 +65,16 @@ int main()
     std::cout << "num violations: "
               << violations.load() << '\n';
 
+    // RESET
+    in_critical[0].store(false, std::memory_order_relaxed);
+    in_critical[1].store(false, std::memory_order_relaxed);
+    turn.store(0, std::memory_order_relaxed);
+    inside.store(0, std::memory_order_relaxed);
+    violations.store(0, std::memory_order_relaxed);
+
     std::cout << "--- SEQUENTIAL CONSISTENCY ---\n";
-    violations.store(0, std::memory_order_seq_cst);
-    used_mode = std::memory_order_seq_cst;
-    t0 = std::thread(worker, 0, 1);
-    t1 = std::thread(worker, 1, 0);
+    t0 = std::thread(worker<std::memory_order_seq_cst>, 0, 1);
+    t1 = std::thread(worker<std::memory_order_seq_cst>, 1, 0);
 
     t0.join();
     t1.join();
