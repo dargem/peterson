@@ -47,11 +47,7 @@ void worker(int me, int other)
             violations.fetch_add(1, std::memory_order_relaxed);
         }
 
-        volatile size_t work = 0;
-        for (size_t i{}; i < 100; ++i)
-        {
-            work = work * 1664525 + 1013904223;
-        }
+        std::this_thread::yield();
 
         inside.fetch_sub(1, std::memory_order_relaxed);
 
