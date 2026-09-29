@@ -2,6 +2,8 @@
 #include <barrier>
 #include <cstdint>
 #include <iostream>
+#include <new>
+#include <random>
 #include <thread>
 
 std::atomic<bool> in_critical[2] = {false, false};
@@ -11,9 +13,15 @@ std::atomic<int> turn{0};
 std::atomic<int> inside{0};
 std::atomic<std::uint64_t> violations{0};
 
-constexpr std::uint64_t iterations = 100'000'000;
+// This should bug on x86 as it can reorder the store -> load into a load -> store
+// So should be able to make violations more "visible" by having a slow store (cache miss) before our load
+// X86 cannot reorder store -> store so maybe? more likely to reorder and do the load while it waits due to cache miss
+static std::atomic<char> big[1 << 28]; 
+std::random_device rd;
+std::mt19937 rng(rd());
+std::uniform_int_distribution<size_t> distrib(0, (1 << 28) - 1);
 
-std::barrier start{2};
+constexpr std::uint64_t iterations = 100'000'000;
 
 template <auto USED_MODE>
 void enter(int me, int other)
@@ -34,11 +42,10 @@ void leave(int me)
 template <auto USED_MODE>
 void worker(int me, int other)
 {
-
-    start.arrive_and_wait();
-
     for (size_t i = 0; i < iterations; ++i)
     {
+        // Slow load op
+        big[distrib(rng)].store(i, std::memory_order_relaxed);
         enter<USED_MODE>(me, other);
 
         // Critical section
