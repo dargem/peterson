@@ -48,12 +48,12 @@ void worker(int me, int other)
         enter<USED_MODE>(me, other);
 
         // Critical section
-        if (inside.fetch_add(1, std::memory_order_relaxed) != 0)
+        if (inside.fetch_add(1, std::memory_order_seq_cst) != 0)
         {
             violations.fetch_add(1, std::memory_order_relaxed);
         }
 
-        inside.fetch_sub(1, std::memory_order_relaxed);
+        inside.fetch_sub(1, std::memory_order_seq_cst);
 
         leave<USED_MODE>(me);
     }
