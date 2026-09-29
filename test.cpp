@@ -15,11 +15,8 @@ std::atomic<std::uint64_t> violations{0};
 
 // This should bug on x86 as it can reorder the store -> load into a load -> store
 // So should be able to make violations more "visible" by having a slow store (cache miss) before our load
-// X86 cannot reorder store -> store so maybe? more likely to reorder and do the load while it waits due to cache miss
+// X86 cannot reorder store -> store, so likely to reorder the load while it is "bottlenecked" by the slow store
 static std::atomic<char> big[1 << 28]; 
-std::random_device rd;
-std::mt19937 rng(rd());
-std::uniform_int_distribution<size_t> distrib(0, (1 << 28) - 1);
 
 constexpr std::uint64_t iterations = 100'000'000;
 
@@ -42,9 +39,11 @@ void leave(int me)
 template <auto USED_MODE>
 void worker(int me, int other)
 {
+    std::mt19937 rng(std::random_device{}());
+    std::uniform_int_distribution<size_t> distrib(0, (1 << 28) - 1);
     for (size_t i = 0; i < iterations; ++i)
     {
-        // Slow load op
+        // Slow store op
         big[distrib(rng)].store(i, std::memory_order_relaxed);
         enter<USED_MODE>(me, other);
 
